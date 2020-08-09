@@ -1,7 +1,8 @@
 package com.example;
 
 import java.security.Principal;
-import java.util.Iterator;
+
+import javax.sql.DataSource;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
@@ -12,9 +13,6 @@ import org.springframework.security.config.annotation.authentication.configurers
 import org.springframework.security.oauth2.config.annotation.web.configuration.EnableResourceServer;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import com.example.entity.User;
-import com.example.repo.UserRepository;
 
 @RestController
 @EnableResourceServer
@@ -34,15 +32,13 @@ public class Application {
 	protected static class AuthenticationManagerConfiguration extends GlobalAuthenticationConfigurerAdapter {
 		
 		@Autowired
-		private UserRepository userRepository;
+		private DataSource dataSource;
 
 		@Override
 		public void init(AuthenticationManagerBuilder auth) throws Exception {
-			Iterable<User> users = userRepository.findAll();
-			for (Iterator<User> i = users.iterator(); i.hasNext();) {
-				User user = i.next();
-				auth.inMemoryAuthentication().withUser(user.getUsername()).password(user.getPassword()).roles("USER");
-			}
+			auth.jdbcAuthentication().dataSource(dataSource)
+					.usersByUsernameQuery("select username, password, true as enabled" + " from user where username=?")
+					.authoritiesByUsernameQuery("select username, 'ROLE_USER' as authority from user where username=?");
 		}
 
 	}
